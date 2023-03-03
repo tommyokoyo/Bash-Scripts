@@ -1,0 +1,58 @@
+#¡/bin/bash
+#run sudo apt update before running this script
+echo "Run sudo apt update before running this script"
+
+#check if nodejs is installed
+if [[ $npm -eq 0 ]];
+then
+    echo "[+] Node version $(npm -v) is installed"
+    npm -v | echo "$(date +"%F %T"): Found Node version $(npm -v) " > sonar-scanner.log
+    echo "[+] exiting script"
+    echo "$(date +"%F %T"): Exit code is 0"
+    exit 0
+else
+    #installing node
+    echo "[+] Missing Npm"
+    echo "[+] Installing Nodejs"
+    sudo apt install nodejs | grep "The following package was automatically installed"
+    #checking if the installation was successful
+    if [ $? -eq 0 ];
+    then
+        echo "[+] Nodejs installation was succesfull"
+        echo "$(date +"%F %T"): Nodejs was Installed succesfully" > sonar-scanner.log
+    else
+        echo "$(date +"%F %T"): $(sudo apt install nodejs)" >> sonar-scanner.log
+        echo "Node installation was not succefull"
+        echo "Check log for details"
+
+fi
+
+cd /Downloads
+#checks if the tmp folder exists
+echo "[+] checking if tmp file exists"
+if [ -d "/tmp/sonar-scanner-cli-4.7.0.2747-linux.zip" ]; then 
+    rm /tmp/sonar-scanner-cli-4.7.0.2747-linux.zip
+fi
+#downloading the file
+echo "[+] downloading sonar-scanner..."
+wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+echo "[+] download compete"
+
+#unzipping the file
+echo "[+] Unzipping file"
+unzip sonar-scanner-cli-4.7.0.2747-linux.zip
+echo "[+] unzipping complete"
+rm sonar-scanner-cli-4.7.0.2747-linux.zip
+
+#install the file in the opt directory
+echo "Installing in opt..."
+
+#check if it exists
+if [ -d "/var/opt/sonar-scanner-4.7.0.2747-linux" ]; then
+    sudo rm -rf /var/opt/sonar-scanner-4.7.0.2747-linux
+fi
+
+sudo mv sonar-scanner-4.7.0.2747-linux /var/opt
+echo "Installation complete"
+
+echo "See my github page for more scripts..."
