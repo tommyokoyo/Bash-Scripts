@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# This simple scripts aims at fixing corrupt zsh history files
+mv ~/.zsh_history ~/.zsh_history_bad
+cat ~/.zsh_history_bad > ~/.zsh_history
+rm ~/.zsh_history_bad
+ 
