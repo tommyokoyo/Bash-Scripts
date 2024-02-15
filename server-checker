@@ -1,0 +1,265 @@
+#!/bin/bash
+
+file_security_check ()
+{
+    #check files security
+
+    echo "<---- Checking security on files ---->"
+    echo ""
+
+    fstab_file_path="/etc/fstab"
+    passwd_file_path="/etc/passwd"
+    shadow_file_path="/etc/shadow"
+    group_file_path='/etc/group'
+    
+    #fstab file owner check
+    if [ $( stat -c '%U' "${fstab_file_path}" ) == 'root' ]; then
+        echo '[OK]: fstab file root owned'
+    else
+        echo '[FAILED]: fstab not root owned'
+    fi
+
+    #passwd file owner check
+    if [ $( stat -c '%U' "${passwd_file_path}") == 'root' ]; then
+        echo '[OK]: passwd file root owned'
+    else
+        echo '[FAILED]: passwd file not root owned'
+    fi
+
+    #shadow file owner check
+    if [ $( stat -c '%U' "${shadow_file_path}") == 'root' ]; then
+        echo '[OK]: shadow file root owned'x
+    else
+        echo '[FAILED]: shadow file not root owned'
+    fi
+
+    #group file owner check
+    if [ $( stat -c '%U' "${group_file_path}") == 'root' ]; then
+        echo '[OK]: Group file root owned'
+    else
+        echo '[FAILED]: Group file not root owned'
+    fi
+    
+    echo ""
+    echo "<---- Checking Permissions on files---->"
+    echo ""
+
+    #fstab file permission check
+    if [ $( stat -c '%a' "${fstab_file_path}" ) == '644' ]; then
+        echo '[OK]: fstab file permissions okay'
+    else
+        echo '[FAILED]: fstabs file permissions need to be reviewed'
+    fi
+
+    #passwd file permission check
+    if [ $( stat -c '%a' "${passwd_file_path}") == '644' ]; then
+        echo '[OK]: passwd file permissions okay'
+    else
+        echo '[FAILED]: passwd file permissions need to be reviewed'
+    fi
+
+    #shadow file permission check
+    if [ $( stat -c '%a' "${shadow_file_path}") == '400' ]; then
+        echo '[OK]: shadow file permissions okay'
+    else
+        echo '[FAILED]: shadow file permissions need to be reviewed'
+    fi
+
+    #group file permission check
+    if [ $( stat -c '%a' "${group_file_path}") == '644' ]; then
+        echo '[OK]: Group file permissions okay'
+    else
+        echo '[FAILED]: Group file permissions need to be reviewed'
+    fi
+}
+
+cron_file_create ()
+{
+    cron_allow='/etc/cron.allow'
+    at_allow='/etc/at.allow'
+
+    if [ -e "$cron_allow " ] && [ -e "$at_allow" ];then
+        sudo rm "$cron_allow" "$at_allow"
+        if [ $? -eq 0]; then
+            echo 'root' | sudo tee "$cron_allow" > /dev/null
+            if [ $? -eq 0 ]; then
+                echo '[OK]: cron.allow file created'
+                echo 'root' | sudo tee "$at_allow" > /dev/null
+                if [ $? -eq 0 ]; then
+                    echo '[OK]: at.allow file created'
+                    return 0
+                else
+                    echo '[FAILED]: Could not create at.allow file'
+                    return 1
+                fi
+            else
+                echo '[FAILED]: Could not create cron.allow file'
+                echo '[FAILED]: Could not create at.allow file'
+                echo '[ALERT]: Cron and at files creation failed'
+                return 1
+            fi
+        else
+            echo '[FAILED]: Existing cron.allow file could not be removed'
+            echo '[FAILED]: Existing at.allow file couled not be removed'
+            echo '[ALERT]: Cron  and at files creation failed'
+            return 1
+        fi
+    else
+        echo 'root' | sudo tee "$cron_allow" > /dev/null
+            if [ $? -eq 0 ]; then
+                echo '[OK]: cron.allow file created'
+                echo 'root' | sudo tee "$at_allow" > /dev/null
+                if [ $? -eq 0 ]; then
+                    echo '[OK]: at.allow file created'
+                    return 0
+                else
+                    echo '[FAILED]: Could not create at.allow file'
+                    return 1
+                fi
+            else
+                echo '[FAILED]: Could not create cron.allow file'
+                echo '[FAILED]: Could not create at.allow file'
+                echo '[ALERT]: Cron and at files creation failed'
+                return 1
+            fi
+    fi
+}
+
+cron_files_check ()
+{
+    cron_allow='/etc/cron.allow'
+    at_allow='/etc/at.allow'
+
+    if [ -e "$cron_allow" ] && [ -e "$at_allow" ];then
+        echo "[OK]: cron.allow file exist."
+        echo "[OK]: at.allow file exist."
+        read -p "[Alert]: Files Exist, do you want to overwrite with root access only? (yes/no): " user_answer
+
+        if [ $user_answer == 'yes' ];then
+            echo "[OK]: Configuring cron files..."
+            cron_file_create
+            if [ $? -eq 0 ]; then
+                echo '[OK]: Configuration Complete'
+                return 0
+            else
+                echo '[FAILED]: Configuration failed'
+                return 1
+            fi
+        elif [ $user_answer == 'no' ];then
+            echo "[OK]: Skipping cron file configuration"
+            return 0
+        else
+            echo "[ERROR]: Unknown Answer"
+            echo "[OK]: Skipping cron file configuration"
+            return 0
+        fi
+    else
+        if [ -e "$cron_allow" ];then
+            echo "[ALERT]: cron.allow file exist"
+            if [ -e "$at_allow" ];then
+                echo "[ALERT]: at.allow file exist"
+                read -p "[Alert]: Files Exist, do you want to overwrite with root access only? (yes/no): " user_answer
+
+                if [ $user_answer == 'yes' ];then
+                    echo "[OK]: Configuring cron files..."
+                    cron_file_create
+                    if [ $? -eq 0 ]; then
+                        echo '[OK]: Configuration Complete'
+                        return 0
+                    else
+                        echo '[FAILED]: Configuration failed'
+                        return 1
+                    fi
+                elif [ $user_answer == 'no' ];then
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                else
+                    echo "[ERROR]: Unknown Answer"
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                fi
+            else
+                echo "[ALERT]: at.allow file doesn't exist"
+                read -p "[Alert]: create at.allow file? Note: This process will overwrite both at.allow and cron.allow with root access only? (yes/no): " user_answer
+
+                if [ $user_answer == 'yes' ];then
+                    echo "[OK]: Configuring cron files..."
+                    cron_file_create
+                    if [ $? -eq 0 ]; then
+                        echo '[OK]: Configuration Complete'
+                        return 0
+                    else
+                        echo '[FAILED]: Configuration failed'
+                        return 1
+                    fi
+                elif [ $user_answer == 'no' ];then
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                else
+                    echo "[ERROR]: Unknown Answer"
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                fi
+            fi
+        else
+            echo "[ALERT]: cron.allow file doesn't exist"
+            if [ -e "$at_allow" ];then
+                echo "[ALERT]: at.allow file exist"
+                read -p "[Alert]: create cron.allow file? Note: This process will overwrite both at.allow and cron.allow with root access only? (yes/no): " user_answer
+
+                if [ $user_answer == 'yes' ];then
+                    echo "[OK]: Configuring cron files..."
+                    cron_file_create
+                    if [ $? -eq 0 ]; then
+                        echo '[OK]: Configuration Complete'
+                        return 0
+                    else
+                        echo '[FAILED]: Configuration failed'
+                        return 1
+                    fi
+                elif [ $user_answer == 'no' ];then
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                else
+                    echo "[ERROR]: Unknown Answer"
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                fi
+            else
+                echo "[ALERT]: at.allow file doesn't exist"
+                read -p "[Alert]: cron.allow and at.allow not found. Create both files with root access only? (yes/no): " user_answer
+
+                if [ $user_answer == 'yes' ];then
+                    echo "[OK]: Configuring cron files..."
+                    cron_file_create
+                    if [ $? -eq 0 ]; then
+                        echo '[OK]: Configuration Complete'
+                        return 0
+                    else
+                        echo '[FAILED]: Configuration failed'
+                        return 1
+                    fi
+                elif [ $user_answer == 'no' ];then
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                else
+                    echo "[ERROR]: Unknown Answer"
+                    echo "[OK]: Skipping cron file configuration"
+                    return 0
+                fi
+            fi
+        fi
+    fi
+
+}
+
+firewall_setup ()
+{}
+
+main ()
+{
+    file_security_check
+    cron_files_check
+}
+
+main

@@ -1,0 +1,1 @@
+root tee /etc/cron.allow
